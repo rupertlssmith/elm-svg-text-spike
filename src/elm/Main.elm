@@ -64,6 +64,21 @@ type Msg
     = WindowSize Size
     | EditorChange EditorChangeEvent
     | SelectionChange SelectionChangeEvent
+    | InputMsg InputEvent
+    | MoveUp
+    | MoveDown
+    | MoveLeft
+    | MoveRight
+    | PageUp
+    | PageDown
+    | LineHome
+    | LineEnd
+    | FileHome
+    | FileEnd
+    | RemoveCharBefore
+    | RemoveCharAfter
+    | NewLine
+    | NoOp
 
 
 init : () -> ( Model, Cmd Msg )
@@ -233,13 +248,13 @@ editableContent ready =
         ]
         [ -- viewCursors model,
           H.node "elm-editable"
-            [ HE.on "textchange" editorChangeDecoder
-            , HE.on "selectionchange" selectionChangeDecoder
+            [ HE.on "textchange" (editorChangeDecoder |> Decode.map EditorChange)
+            , HE.on "selectionchange" (selectionChangeDecoder |> Decode.map SelectionChange)
             , HA.attribute "spellcheck" "false"
             , HA.attribute "autocorrect" "off"
             , HA.attribute "autocapitalize" "off"
+            , HE.on "beforeinput" (beforeInputDecoder |> Decode.map InputMsg)
 
-            -- , HE.on "beforeinput" beforeInputDecoder
             -- , HE.preventDefaultOn "cut" (( Cut (), True ) |> Decode.succeed)
             -- , HE.preventDefaultOn "copy" (( Copy (), True ) |> Decode.succeed)
             -- , HE.on "pastewithdata" pasteWithDataDecoder
@@ -253,6 +268,30 @@ editableContent ready =
                 []
             ]
         ]
+
+
+
+-- Cursor model.
+
+
+type Cursor
+    = NoCursor
+    | ActiveCursor RowCol
+    | RegionCursor
+        { -- The control cursor, always clipped to the virtual scroll window.
+          start : RowCol
+        , end : RowCol
+
+        -- The selection within the text model.
+        , selectionStart : RowCol
+        , selectionEnd : RowCol
+        }
+
+
+type alias RowCol =
+    { row : Int
+    , col : Int
+    }
 
 
 
@@ -354,13 +393,12 @@ type alias SelectionChangeEvent =
     }
 
 
-selectionChangeDecoder : Decode.Decoder Msg
+selectionChangeDecoder : Decode.Decoder SelectionChangeEvent
 selectionChangeDecoder =
     Decode.succeed SelectionChangeEvent
         |> andMap (Decode.at [ "detail", "selection" ] selectionDecoder)
         |> andMap (Decode.at [ "detail", "ctrlEvent" ] Decode.bool)
         |> andMap (Decode.at [ "detail", "timestamp" ] Decode.int)
-        |> Decode.map SelectionChange
 
 
 
@@ -379,14 +417,13 @@ type alias TextChange =
     ( Path, String )
 
 
-editorChangeDecoder : Decode.Decoder Msg
+editorChangeDecoder : Decode.Decoder EditorChangeEvent
 editorChangeDecoder =
     Decode.succeed EditorChangeEvent
         |> andMap (Decode.at [ "detail", "selection" ] selectionDecoder)
         |> andMap (Decode.at [ "detail", "characterDataMutations" ] characterDataMutationsDecoder)
         |> andMap (Decode.at [ "detail", "timestamp" ] Decode.int)
         |> andMap (Decode.at [ "detail", "isComposing" ] (Decode.oneOf [ Decode.bool, Decode.succeed False ]))
-        |> Decode.map EditorChange
 
 
 characterDataMutationsDecoder : Decode.Decoder (List TextChange)
@@ -396,6 +433,101 @@ characterDataMutationsDecoder =
             (Decode.field "path" (Decode.list Decode.int))
             (Decode.field "text" Decode.string)
         )
+
+
+
+-- Editor input events.
+
+
+type alias InputEvent =
+    { data : Maybe String
+    , isComposing : Bool
+    , inputType : String
+    }
+
+
+beforeInputDecoder : Decoder InputEvent
+beforeInputDecoder =
+    Decode.succeed InputEvent
+        |> andMap (Decode.maybe (Decode.field "data" Decode.string))
+        |> andMap (Decode.oneOf [ Decode.field "isComposing" Decode.bool, Decode.succeed False ])
+        |> andMap (Decode.field "inputType" Decode.string)
+
+
+
+-- Keyboard events.
+
+
+type alias KeyEvent =
+    { keyCode : Int
+    , key : String
+    , altKey : Bool
+    , metaKey : Bool
+    , ctrlKey : Bool
+    , shiftKey : Bool
+    , isComposing : Bool
+    }
+
+
+keyMsgDecoder : Decoder ( Msg, Bool )
+keyMsgDecoder =
+    Decode.succeed KeyEvent
+        |> andMap (Decode.field "keyCode" Decode.int)
+        |> andMap (Decode.field "key" Decode.string)
+        |> andMap (Decode.field "altKey" Decode.bool)
+        |> andMap (Decode.field "metaKey" Decode.bool)
+        |> andMap (Decode.field "ctrlKey" Decode.bool)
+        |> andMap (Decode.field "shiftKey" Decode.bool)
+        |> andMap (Decode.oneOf [ Decode.field "isComposing" Decode.bool, Decode.succeed False ])
+        |> Decode.andThen keyToMsg
+
+
+keyToMsg : KeyEvent -> Decoder ( Msg, Bool )
+keyToMsg keyEvent =
+    case keyEvent.key of
+        "ArrowUp" ->
+            Decode.succeed ( MoveUp, True )
+
+        "ArrowDown" ->
+            Decode.succeed ( MoveDown, True )
+
+        "ArrowLeft" ->
+            Decode.succeed ( MoveLeft, True )
+
+        "ArrowRight" ->
+            Decode.succeed ( MoveRight, True )
+
+        "PageUp" ->
+            Decode.succeed ( PageUp, True )
+
+        "PageDown" ->
+            Decode.succeed ( PageDown, True )
+
+        "Backspace" ->
+            Decode.succeed ( RemoveCharBefore, True )
+
+        "Delete" ->
+            Decode.succeed ( RemoveCharAfter, True )
+
+        "Enter" ->
+            Decode.succeed ( NewLine, True )
+
+        "Home" ->
+            if keyEvent.ctrlKey then
+                Decode.succeed ( FileHome, True )
+
+            else
+                Decode.succeed ( LineHome, True )
+
+        "End" ->
+            if keyEvent.ctrlKey then
+                Decode.succeed ( FileEnd, True )
+
+            else
+                Decode.succeed ( LineEnd, True )
+
+        _ ->
+            Decode.succeed ( NoOp, False )
 
 
 
