@@ -1,49 +1,25 @@
 module Main exposing (main)
 
--- import Arc2d exposing (Arc2d)
--- import Curve2d exposing (Curve2d)
--- import Ease
 -- import Geometry.Svg
--- import Http
--- import Json.Decode as Decode exposing (Decoder)
--- import Json.Decode.Extra exposing (andMap, withDefault)
 -- import LineSegment2d exposing (LineSegment2d)
 -- import Point2d exposing (Point2d)
--- import Ports.SVGTextPort exposing (textToSVG, textToSVGResponse)
--- import TeaTree exposing (Tree, Zipper)
 -- import TextToSVG exposing (TextAlignment(..), TextRenderFunc, textAsPath, textAsText)
+-- import Vector2d exposing (Vector2d)
 
 import Browser
-import Browser.Dom exposing (Viewport, getViewport)
-import Browser.Events exposing (onResize)
+import Browser.Dom exposing (Viewport)
+import Browser.Events
 import Color exposing (Color)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Lazy
-import Task exposing (Task, perform)
-import TypedSvg exposing (circle, g, line, path, rect, svg, text_, tspan)
-import TypedSvg.Attributes
-    exposing
-        ( color
-        , d
-        , fill
-        , fillOpacity
-        , fontFamily
-        , preserveAspectRatio
-        , shapeRendering
-        , stroke
-        , strokeDasharray
-        , strokeLinecap
-        , strokeLinejoin
-        , textAnchor
-        , textRendering
-        , transform
-        , viewBox
-        )
-import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
-import TypedSvg.Core exposing (Svg, svgNamespace, text)
-import TypedSvg.Events
-import TypedSvg.Types
+import Task exposing (Task)
+import TypedSvg as Svg
+import TypedSvg.Attributes as SvgAttr
+import TypedSvg.Attributes.InPx as InPx
+import TypedSvg.Core as SvgCore exposing (Svg)
+import TypedSvg.Events as SvgEvents
+import TypedSvg.Types as SvgTypes
     exposing
         ( Align(..)
         , AnchorAlignment(..)
@@ -56,13 +32,8 @@ import TypedSvg.Types
         , StrokeLinejoin(..)
         , TextRendering(..)
         , Transform(..)
-        , px
         )
-import Utils.GridMetrics exposing (Frame, Size, Sized, middle, rectToFrame)
-
-
-
--- import Vector2d exposing (Vector2d)
+import Utils.GridMetrics as GridMetrics exposing (Frame, Size, Sized)
 
 
 main : Program () Model Msg
@@ -92,13 +63,13 @@ type Msg
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( SizingWindow
-    , Task.perform (viewportToSize >> WindowSize) getViewport
+    , Task.perform (viewportToSize >> WindowSize) Browser.Dom.getViewport
     )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    onResize coordsToSize |> Sub.map WindowSize
+    Browser.Events.onResize coordsToSize |> Sub.map WindowSize
 
 
 noop model =
@@ -128,7 +99,7 @@ viewportToSize vport =
 windowSizeToFrame : Size -> Frame
 windowSizeToFrame size =
     { x = 0.0, y = 0.0, w = size.w, h = size.h }
-        |> rectToFrame
+        |> GridMetrics.rectToFrame
 
 
 
@@ -195,14 +166,14 @@ diagram diag =
         frame =
             diag.frame
     in
-    svg
-        [ preserveAspectRatio (Align ScaleMid ScaleMid) Meet
-        , viewBox (round frame.x |> toFloat)
+    Svg.svg
+        [ SvgAttr.preserveAspectRatio (Align ScaleMid ScaleMid) Meet
+        , SvgAttr.viewBox (round frame.x |> toFloat)
             (round frame.y |> toFloat)
             (round frame.w |> toFloat)
             (round frame.h |> toFloat)
-        , svgNamespace
-        , shapeRendering RenderGeometricPrecision
+        , SvgCore.svgNamespace
+        , SvgAttr.shapeRendering RenderGeometricPrecision
         ]
         [ background frame ]
 
@@ -213,13 +184,13 @@ background size =
         skirtScale =
             10
     in
-    rect
-        [ fill <| Paint offWhite
-        , fillOpacity <| Opacity 0.8
-        , strokeWidth 0
-        , x -(skirtScale * size.w)
-        , y -(skirtScale * size.h)
-        , width <| (2 * skirtScale + 1) * size.w
-        , height <| (2 * skirtScale + 1) * size.h
+    Svg.rect
+        [ SvgAttr.fill <| Paint offWhite
+        , SvgAttr.fillOpacity <| Opacity 0.8
+        , InPx.strokeWidth 0
+        , InPx.x -(skirtScale * size.w)
+        , InPx.y -(skirtScale * size.h)
+        , InPx.width <| (2 * skirtScale + 1) * size.w
+        , InPx.height <| (2 * skirtScale + 1) * size.h
         ]
         []
