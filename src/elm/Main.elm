@@ -16,6 +16,7 @@ import Html.Lazy
 import Task exposing (Task)
 import TypedSvg as Svg
 import TypedSvg.Attributes as SvgAttr
+import TypedSvg.Attributes.InEm as InEm
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core as SvgCore exposing (Svg)
 import TypedSvg.Events as SvgEvents
@@ -175,7 +176,7 @@ diagram diag =
         , SvgCore.svgNamespace
         , SvgAttr.shapeRendering RenderGeometricPrecision
         ]
-        [ background frame ]
+        [ background frame, text frame ]
 
 
 background : Sized a -> Svg msg
@@ -194,3 +195,13 @@ background size =
         , InPx.height <| (2 * skirtScale + 1) * size.h
         ]
         []
+
+
+text : Sized a -> Svg msg
+text size =
+    Svg.text_ [ InPx.x 20, InEm.x 2 ]
+        [ Svg.tspan [ InPx.x 0, InPx.dy 20 ]
+            [ Html.text "line1" ]
+        , Svg.tspan [ InPx.x 0, InPx.dy 20 ]
+            [ Html.text "line2" ]
+        ]
