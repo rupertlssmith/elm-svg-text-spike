@@ -1,63 +1,63 @@
 module Main exposing (main)
 
 -- import Arc2d exposing (Arc2d)
--- import Browser
--- import Browser.Dom exposing (Viewport, getViewport)
--- import Browser.Events exposing (onResize)
--- import Color exposing (Color)
 -- import Curve2d exposing (Curve2d)
 -- import Ease
 -- import Geometry.Svg
--- import Html exposing (Html)
--- import Html.Attributes
--- import Html.Lazy
 -- import Http
 -- import Json.Decode as Decode exposing (Decoder)
 -- import Json.Decode.Extra exposing (andMap, withDefault)
 -- import LineSegment2d exposing (LineSegment2d)
 -- import Point2d exposing (Point2d)
 -- import Ports.SVGTextPort exposing (textToSVG, textToSVGResponse)
--- import Task exposing (Task, perform)
 -- import TeaTree exposing (Tree, Zipper)
 -- import TextToSVG exposing (TextAlignment(..), TextRenderFunc, textAsPath, textAsText)
--- import TypedSvg exposing (circle, g, line, path, rect, svg, text_, tspan)
--- import TypedSvg.Attributes
---     exposing
---         ( color
---         , d
---         , fill
---         , fillOpacity
---         , fontFamily
---         , preserveAspectRatio
---         , shapeRendering
---         , stroke
---         , strokeDasharray
---         , strokeLinecap
---         , strokeLinejoin
---         , textAnchor
---         , textRendering
---         , transform
---         , viewBox
---         )
--- import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
--- import TypedSvg.Core exposing (Svg, svgNamespace, text)
--- import TypedSvg.Events
--- import TypedSvg.Types
---     exposing
---         ( Align(..)
---         , AnchorAlignment(..)
---         , Fill(..)
---         , MeetOrSlice(..)
---         , Opacity(..)
---         , Scale(..)
---         , ShapeRendering(..)
---         , StrokeLinecap(..)
---         , StrokeLinejoin(..)
---         , TextRendering(..)
---         , Transform(..)
---         , px
---         )
 
+import Browser
+import Browser.Dom exposing (Viewport, getViewport)
+import Browser.Events exposing (onResize)
+import Color exposing (Color)
+import Html exposing (Html)
+import Html.Attributes
+import Html.Lazy
+import Task exposing (Task, perform)
+import TypedSvg exposing (circle, g, line, path, rect, svg, text_, tspan)
+import TypedSvg.Attributes
+    exposing
+        ( color
+        , d
+        , fill
+        , fillOpacity
+        , fontFamily
+        , preserveAspectRatio
+        , shapeRendering
+        , stroke
+        , strokeDasharray
+        , strokeLinecap
+        , strokeLinejoin
+        , textAnchor
+        , textRendering
+        , transform
+        , viewBox
+        )
+import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
+import TypedSvg.Core exposing (Svg, svgNamespace, text)
+import TypedSvg.Events
+import TypedSvg.Types
+    exposing
+        ( Align(..)
+        , AnchorAlignment(..)
+        , MeetOrSlice(..)
+        , Opacity(..)
+        , Paint(..)
+        , Scale(..)
+        , ShapeRendering(..)
+        , StrokeLinecap(..)
+        , StrokeLinejoin(..)
+        , TextRendering(..)
+        , Transform(..)
+        , px
+        )
 import Utils.GridMetrics exposing (Frame, Size, Sized, middle, rectToFrame)
 
 
@@ -76,7 +76,7 @@ main =
 
 
 type Model
-    = SizingWindowModel
+    = SizingWindow
     | Ready ReadyModel
 
 
@@ -91,7 +91,7 @@ type Msg
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( SizingWindowModel
+    ( SizingWindow
     , Task.perform (viewportToSize >> WindowSize) getViewport
     )
 
@@ -108,7 +108,7 @@ noop model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case ( model, action ) of
-        ( SizingWindow sizingWindowModel, WindowSize windowSize ) ->
+        ( SizingWindow, WindowSize windowSize ) ->
             noop (Ready { frame = windowSizeToFrame windowSize })
 
         ( _, _ ) ->
@@ -214,7 +214,7 @@ background size =
             10
     in
     rect
-        [ fill <| Fill offWhite
+        [ fill <| Paint offWhite
         , fillOpacity <| Opacity 0.8
         , strokeWidth 0
         , x -(skirtScale * size.w)
