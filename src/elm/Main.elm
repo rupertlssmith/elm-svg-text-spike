@@ -10,8 +10,9 @@ import Browser
 import Browser.Dom exposing (Viewport)
 import Browser.Events
 import Color exposing (Color)
-import Html exposing (Html)
-import Html.Attributes
+import Html as H exposing (Html)
+import Html.Attributes as HA
+import Html.Events as HE
 import Html.Lazy
 import Task exposing (Task)
 import TypedSvg as Svg
@@ -140,7 +141,7 @@ view model =
 
 body : Model -> Html Msg
 body model =
-    Html.div []
+    H.div []
         [ Html.Lazy.lazy fullBody model
         ]
 
@@ -149,16 +150,16 @@ fullBody : Model -> Html Msg
 fullBody model =
     case model of
         Ready ready ->
-            Html.div
-                [ Html.Attributes.style "width" "100%"
-                , Html.Attributes.style "height" "100%"
-                , Html.Attributes.style "overflow" "hidden"
+            H.div
+                [ HA.style "width" "100%"
+                , HA.style "height" "100%"
+                , HA.style "overflow" "hidden"
                 ]
-                [ diagram ready
+                [ editableContent ready
                 ]
 
         _ ->
-            Html.div [] []
+            H.div [] []
 
 
 diagram : { frame : Frame } -> Html Msg
@@ -176,7 +177,9 @@ diagram diag =
         , SvgCore.svgNamespace
         , SvgAttr.shapeRendering RenderGeometricPrecision
         ]
-        [ background frame, text frame ]
+        [ background frame
+        , editableText frame
+        ]
 
 
 background : Sized a -> Svg msg
@@ -197,11 +200,54 @@ background size =
         []
 
 
-text : Sized a -> Svg msg
-text size =
-    Svg.text_ [ InPx.x 20, InEm.x 2 ]
+editableText : Sized a -> Svg msg
+editableText size =
+    Svg.text_
+        [ InPx.x 20
+        , InEm.y 2
+        ]
         [ Svg.tspan [ InPx.x 0, InPx.dy 20 ]
-            [ Html.text "line1" ]
+            [ H.text "editable line1" ]
         , Svg.tspan [ InPx.x 0, InPx.dy 20 ]
-            [ Html.text "line2" ]
+            [ H.text "editable line2" ]
+        ]
+
+
+
+-- contenteditable stuff
+
+
+editableContent : ReadyModel -> Html Msg
+editableContent ready =
+    -- let
+    --     cursor =
+    --         model.controlCursor
+    -- in
+    H.div
+        [ HA.id "content-main"
+
+        --, HA.style "height" (String.fromFloat model.bufferHeight ++ "px")
+        , HA.contenteditable True
+        ]
+        [ -- viewCursors model,
+          H.node "elm-editable"
+            [ --  HE.on "textchange" editorChangeDecoder
+              -- , HE.on "selectionchange" selectionChangeDecoder,
+              HA.attribute "spellcheck" "false"
+            , HA.attribute "autocorrect" "off"
+            , HA.attribute "autocapitalize" "off"
+
+            -- , HE.on "beforeinput" beforeInputDecoder
+            -- , HE.preventDefaultOn "cut" (( Cut (), True ) |> Decode.succeed)
+            -- , HE.preventDefaultOn "copy" (( Copy (), True ) |> Decode.succeed)
+            -- , HE.on "pastewithdata" pasteWithDataDecoder
+            ]
+            [ diagram ready
+            , H.node "selection-handler"
+                [-- cursorToSelection model.controlCursor model.startLine model.buffer
+                 --     |> selectionEncoder model.startLine
+                 --     |> HA.property "selection"
+                ]
+                []
+            ]
         ]
