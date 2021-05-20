@@ -14,6 +14,8 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Html.Lazy
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Task exposing (Task)
 import TypedSvg as Svg
 import TypedSvg.Attributes as SvgAttr
@@ -60,6 +62,8 @@ type alias ReadyModel =
 
 type Msg
     = WindowSize Size
+    | EditorChange EditorChangeEvent
+    | SelectionChange SelectionChangeEvent
 
 
 init : () -> ( Model, Cmd Msg )
@@ -79,8 +83,8 @@ noop model =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update action model =
-    case ( model, action ) of
+update msg model =
+    case ( model, Debug.log "msg" msg ) of
         ( SizingWindow, WindowSize windowSize ) ->
             noop (Ready { frame = windowSizeToFrame windowSize })
 
@@ -203,9 +207,7 @@ background size =
 editableText : Sized a -> Svg msg
 editableText size =
     Svg.text_
-        [ InPx.x 20
-        , InEm.y 2
-        ]
+        [ InPx.x 20, InEm.y 2 ]
         [ Svg.tspan [ InPx.x 0, InPx.dy 20 ]
             [ H.text "editable line1" ]
         , Svg.tspan [ InPx.x 0, InPx.dy 20 ]
@@ -231,9 +233,9 @@ editableContent ready =
         ]
         [ -- viewCursors model,
           H.node "elm-editable"
-            [ --  HE.on "textchange" editorChangeDecoder
-              -- , HE.on "selectionchange" selectionChangeDecoder,
-              HA.attribute "spellcheck" "false"
+            [ HE.on "textchange" editorChangeDecoder
+            , HE.on "selectionchange" selectionChangeDecoder
+            , HA.attribute "spellcheck" "false"
             , HA.attribute "autocorrect" "off"
             , HA.attribute "autocapitalize" "off"
 
@@ -251,3 +253,155 @@ editableContent ready =
                 []
             ]
         ]
+
+
+
+-- Browser selections.
+
+
+type Selection
+    = NoSelection
+    | Collapsed
+        { offset : Int
+        , node : Path
+        }
+    | Range
+        { anchorOffset : Int
+        , anchorNode : Path
+        , focusOffset : Int
+        , focusNode : Path
+        }
+
+
+type alias Path =
+    List Int
+
+
+selectionDecoder : Decode.Decoder Selection
+selectionDecoder =
+    let
+        range aNode aOffset fNode fOffset =
+            Range
+                { anchorOffset = aOffset
+                , anchorNode = aNode
+                , focusOffset = fOffset
+                , focusNode = fNode
+                }
+
+        collapsed fNode fOffset =
+            Collapsed
+                { offset = fOffset
+                , node = fNode
+                }
+    in
+    Decode.at [ "selection" ] Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "collapsed" ->
+                        Decode.succeed collapsed
+                            |> andMap (Decode.at [ "node" ] (Decode.list Decode.int))
+                            |> andMap (Decode.at [ "offset" ] Decode.int)
+
+                    "range" ->
+                        Decode.succeed range
+                            |> andMap (Decode.at [ "anchorNode" ] (Decode.list Decode.int))
+                            |> andMap (Decode.at [ "anchorOffset" ] Decode.int)
+                            |> andMap (Decode.at [ "focusNode" ] (Decode.list Decode.int))
+                            |> andMap (Decode.at [ "focusOffset" ] Decode.int)
+
+                    _ ->
+                        Decode.succeed NoSelection
+            )
+
+
+selectionEncoder : Int -> Selection -> Encode.Value
+selectionEncoder startLine sel =
+    case sel of
+        NoSelection ->
+            [ ( "selection", Encode.string "noselection" )
+            , ( "startLine", Encode.int startLine )
+            ]
+                |> Encode.object
+
+        Collapsed val ->
+            [ ( "selection", Encode.string "collapsed" )
+            , ( "startLine", Encode.int startLine )
+            , ( "node", Encode.list Encode.int val.node )
+            , ( "offset", Encode.int val.offset )
+            ]
+                |> Encode.object
+
+        Range val ->
+            [ ( "selection", Encode.string "range" )
+            , ( "startLine", Encode.int startLine )
+            , ( "anchorNode", Encode.list Encode.int val.anchorNode )
+            , ( "anchorOffset", Encode.int val.anchorOffset )
+            , ( "focusNode", Encode.list Encode.int val.focusNode )
+            , ( "focusOffset", Encode.int val.focusOffset )
+            ]
+                |> Encode.object
+
+
+
+-- Selection change events.
+
+
+type alias SelectionChangeEvent =
+    { selection : Selection
+    , isControl : Bool
+    , timestamp : Int
+    }
+
+
+selectionChangeDecoder : Decode.Decoder Msg
+selectionChangeDecoder =
+    Decode.succeed SelectionChangeEvent
+        |> andMap (Decode.at [ "detail", "selection" ] selectionDecoder)
+        |> andMap (Decode.at [ "detail", "ctrlEvent" ] Decode.bool)
+        |> andMap (Decode.at [ "detail", "timestamp" ] Decode.int)
+        |> Decode.map SelectionChange
+
+
+
+-- Editor mutation events.
+
+
+type alias EditorChangeEvent =
+    { selection : Selection
+    , characterDataMutations : List TextChange
+    , timestamp : Int
+    , isComposing : Bool
+    }
+
+
+type alias TextChange =
+    ( Path, String )
+
+
+editorChangeDecoder : Decode.Decoder Msg
+editorChangeDecoder =
+    Decode.succeed EditorChangeEvent
+        |> andMap (Decode.at [ "detail", "selection" ] selectionDecoder)
+        |> andMap (Decode.at [ "detail", "characterDataMutations" ] characterDataMutationsDecoder)
+        |> andMap (Decode.at [ "detail", "timestamp" ] Decode.int)
+        |> andMap (Decode.at [ "detail", "isComposing" ] (Decode.oneOf [ Decode.bool, Decode.succeed False ]))
+        |> Decode.map EditorChange
+
+
+characterDataMutationsDecoder : Decode.Decoder (List TextChange)
+characterDataMutationsDecoder =
+    Decode.list
+        (Decode.map2 Tuple.pair
+            (Decode.field "path" (Decode.list Decode.int))
+            (Decode.field "text" Decode.string)
+        )
+
+
+
+-- Helpers
+
+
+andMap : Decoder a -> Decoder (a -> b) -> Decoder b
+andMap =
+    Decode.map2 (|>)
