@@ -188,8 +188,8 @@ global =
         [ Css.position Css.relative
         , Css.fontFamily Css.monospace
         , Css.whiteSpace Css.pre
-        , Css.overflowX Css.hidden
-        , Css.overflowY Css.hidden
+        , Css.overflowX Css.visible
+        , Css.overflowY Css.visible
 
         --, Css.pct 100 |> Css.width
         --, Css.pct 100 |> Css.height
