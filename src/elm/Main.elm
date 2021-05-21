@@ -46,7 +46,7 @@ import Utils.GridMetrics as GridMetrics exposing (Frame, Size, Sized)
 config =
     let
         fontSize =
-            15
+            30
 
         lineHeightRatio =
             1.4
@@ -189,9 +189,10 @@ global =
         , Css.fontFamily Css.monospace
         , Css.whiteSpace Css.pre
         , Css.overflowX Css.hidden
-        , Css.overflowY Css.scroll
-        , Css.pct 100 |> Css.width
-        , Css.pct 100 |> Css.height
+        , Css.overflowY Css.hidden
+
+        --, Css.pct 100 |> Css.width
+        --, Css.pct 100 |> Css.height
         ]
     , Css.Global.id "editor-main-inner"
         [ Css.displayFlex
@@ -209,7 +210,12 @@ global =
         , Css.property "-webkit-user-select" "text"
         , Css.property "-ms-user-select" "text"
         , Css.backgroundColor (Css.rgb 200 200 20)
+        , Css.whiteSpace Css.noWrap
+        , Css.px config.lineHeight |> Css.lineHeight
+        , Css.px config.fontSize |> Css.fontSize
 
+        -- , Css.px config.lineHeight |> Css.lineHeight
+        -- , Css.px config.lineHeight |> Css.height
         --, Css.property "caret-color" "transparent"
         ]
     , Css.Global.class "content-line"
@@ -313,10 +319,10 @@ background size =
 editableText : Sized a -> Svg Msg
 editableText size =
     SvgCore.foreignObject
-        [ InPx.x 20
-        , InPx.y 20
-        , InPx.width 200
-        , InPx.height 200
+        [ InPx.x 50
+        , InPx.y 50
+        , InPx.width 400
+        , InPx.height 400
         ]
         [ H.div [ HA.id "post-it-note" ]
             [ editableContent
@@ -353,7 +359,7 @@ editableContent =
             -- , HE.preventDefaultOn "copy" (( Copy (), True ) |> Decode.succeed)
             -- , HE.on "pastewithdata" pasteWithDataDecoder
             ]
-            [ H.div [] [ H.text "editable text in foreignObject" ]
+            [ H.div [] [ H.text "Editable Post-It Note" ]
             , H.node "selection-handler"
                 [-- cursorToSelection model.controlCursor model.startLine model.buffer
                  --     |> selectionEncoder model.startLine
