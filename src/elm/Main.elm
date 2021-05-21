@@ -195,13 +195,14 @@ global =
         --, Css.pct 100 |> Css.height
         ]
     , Css.Global.id "editor-main-inner"
-        [ Css.displayFlex
-        , Css.flexDirection Css.row
-        , Css.outline Css.none
+        [ -- Css.displayFlex
+          -- , Css.flexDirection Css.row,
+          Css.outline Css.none
         ]
     , Css.Global.id "content-main"
-        [ Css.position Css.relative
-        , Css.property "flex" "1"
+        [ Css.position Css.absolute
+
+        --, Css.property "flex" "1"
         , Css.property "user-select" "none"
         , Css.em 1 |> Css.padding
         , Css.outline3 (Css.px 0) Css.solid Css.transparent
