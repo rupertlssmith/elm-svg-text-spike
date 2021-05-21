@@ -10,10 +10,13 @@ import Browser
 import Browser.Dom exposing (Viewport)
 import Browser.Events
 import Color exposing (Color)
+import Css
+import Css.Global
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Html.Lazy
+import Html.Styled
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Task exposing (Task)
@@ -38,6 +41,23 @@ import TypedSvg.Types as SvgTypes
         , Transform(..)
         )
 import Utils.GridMetrics as GridMetrics exposing (Frame, Size, Sized)
+
+
+config =
+    let
+        fontSize =
+            15
+
+        lineHeightRatio =
+            1.4
+    in
+    { fontSize = fontSize
+    , lineHeightRatio = lineHeightRatio
+    , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
+    , lineLength = 120
+    , numLines = 10000
+    , blinkInterval = 400
+    }
 
 
 main : Program () Model Msg
@@ -124,7 +144,7 @@ windowSizeToFrame size =
 
 
 
--- Rendering
+-- Styling
 
 
 black =
@@ -151,10 +171,81 @@ printGray =
     Color.rgb 48 48 48
 
 
+global : List Css.Global.Snippet
+global =
+    [ Css.Global.html
+        [ Css.pct 100 |> Css.height ]
+    , Css.Global.body
+        [ Css.pct 100 |> Css.height ]
+    , Css.Global.id "post-it-note"
+        [ Css.pct 100 |> Css.width
+        , Css.pct 100 |> Css.height
+
+        --, Css.em 1 |> Css.padding
+        , Css.backgroundColor (Css.rgb 225 225 20)
+        ]
+    , Css.Global.id "editor-main"
+        [ Css.position Css.relative
+        , Css.fontFamily Css.monospace
+        , Css.whiteSpace Css.pre
+        , Css.overflowX Css.hidden
+        , Css.overflowY Css.scroll
+        , Css.pct 100 |> Css.width
+        , Css.pct 100 |> Css.height
+        ]
+    , Css.Global.id "editor-main-inner"
+        [ Css.displayFlex
+        , Css.flexDirection Css.row
+        , Css.outline Css.none
+        ]
+    , Css.Global.id "content-main"
+        [ Css.position Css.relative
+        , Css.property "flex" "1"
+        , Css.property "user-select" "none"
+        , Css.em 1 |> Css.padding
+        , Css.outline3 (Css.px 0) Css.solid Css.transparent
+        , Css.property "user-select" "text"
+        , Css.property "-moz-user-select" "text"
+        , Css.property "-webkit-user-select" "text"
+        , Css.property "-ms-user-select" "text"
+        , Css.backgroundColor (Css.rgb 200 200 20)
+
+        --, Css.property "caret-color" "transparent"
+        ]
+    , Css.Global.class "content-line"
+        [ Css.position Css.absolute
+        , Css.px 0 |> Css.left
+        , Css.px 0 |> Css.right
+        , Css.px config.lineHeight |> Css.lineHeight
+        , Css.px config.lineHeight |> Css.height
+
+        --, Css.backgroundColor (Css.rgb 190 195 167)
+        ]
+    , Css.Global.class "cursors"
+        [ Css.position Css.relative
+        ]
+    , Css.Global.class "cursor"
+        [ Css.position Css.absolute
+        , Css.px config.lineHeight |> Css.height
+        , Css.borderLeft3 (Css.px 2.5) Css.solid (Css.rgb 90 95 167)
+        ]
+    , Css.Global.selector "::selection"
+        [ Css.backgroundColor (Css.rgb 196 195 217)
+        ]
+    ]
+
+
+
+-- View
+
+
 view : Model -> Browser.Document Msg
 view model =
     { title = "SVG Text Editing Example"
-    , body = [ body model ]
+    , body =
+        [ Css.Global.global global |> Html.Styled.toUnstyled
+        , body model
+        ]
     }
 
 
@@ -174,7 +265,7 @@ fullBody model =
                 , HA.style "height" "100%"
                 , HA.style "overflow" "hidden"
                 ]
-                [ editableContent ready
+                [ diagram ready
                 ]
 
         _ ->
@@ -219,14 +310,17 @@ background size =
         []
 
 
-editableText : Sized a -> Svg msg
+editableText : Sized a -> Svg Msg
 editableText size =
-    Svg.text_
-        [ InPx.x 20, InEm.y 2 ]
-        [ Svg.tspan [ InPx.x 0, InPx.dy 20 ]
-            [ H.text "editable line1" ]
-        , Svg.tspan [ InPx.x 0, InPx.dy 20 ]
-            [ H.text "editable line2" ]
+    SvgCore.foreignObject
+        [ InPx.x 20
+        , InPx.y 20
+        , InPx.width 200
+        , InPx.height 200
+        ]
+        [ H.div [ HA.id "post-it-note" ]
+            [ editableContent
+            ]
         ]
 
 
@@ -234,8 +328,8 @@ editableText size =
 -- contenteditable stuff
 
 
-editableContent : ReadyModel -> Html Msg
-editableContent ready =
+editableContent : Html Msg
+editableContent =
     -- let
     --     cursor =
     --         model.controlCursor
@@ -259,7 +353,7 @@ editableContent ready =
             -- , HE.preventDefaultOn "copy" (( Copy (), True ) |> Decode.succeed)
             -- , HE.on "pastewithdata" pasteWithDataDecoder
             ]
-            [ diagram ready
+            [ H.div [] [ H.text "editable text in foreignObject" ]
             , H.node "selection-handler"
                 [-- cursorToSelection model.controlCursor model.startLine model.buffer
                  --     |> selectionEncoder model.startLine
