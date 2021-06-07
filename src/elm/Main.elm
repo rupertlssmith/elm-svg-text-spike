@@ -295,7 +295,7 @@ diagram diag =
         , SvgAttr.shapeRendering RenderGeometricPrecision
         ]
         [ background frame
-        , editableText frame
+        , editableTextForeignObject frame
         ]
 
 
@@ -317,8 +317,8 @@ background size =
         []
 
 
-editableText : Sized a -> Svg Msg
-editableText size =
+editableTextForeignObject : Sized a -> Svg Msg
+editableTextForeignObject size =
     SvgCore.foreignObject
         [ InPx.x 50
         , InPx.y 50
