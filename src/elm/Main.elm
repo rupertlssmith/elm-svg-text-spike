@@ -119,7 +119,7 @@ noop model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( model, Debug.log "msg" msg ) of
+    case ( model, msg ) of
         ( SizingWindow, WindowSize windowSize ) ->
             noop (Ready { frame = windowSizeToFrame windowSize })
 
